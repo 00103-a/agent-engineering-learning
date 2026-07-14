@@ -1,0 +1,15 @@
+[project]
+name = "agent-engineering-learning"
+version = "0.1.0"
+description = "Interactive exercises for learning production-oriented agent engineering"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["exercises"]
+python_files = ["test_*.py"]
+addopts = "-ra"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+]
