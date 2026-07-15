@@ -4,6 +4,18 @@
 
 The full engineering map describes the concerns of a mature agent platform. It is not a checklist to implement in parallel. The learning sequence should maximize demonstrable engineering ability for an internship while preserving a path toward deeper infrastructure work.
 
+## Priority 0: Build Python-for-Agent fluency
+
+The 2026-07-15 preflight showed that the learner can follow agent control flow but still needs guided practice with dictionaries, dataclasses, function contracts, exceptions, async execution, and pytest. These foundations should be trained through small agent components before framework runtime source becomes the main material.
+
+Progress through three levels:
+
+1. Read and modify a focused implementation.
+2. Complete an implementation from interfaces, tests, and graded hints.
+3. Rebuild it without the previous solution and explain the trade-offs.
+
+Passing tests after line-by-line guidance is evidence of understanding, not yet evidence of independent implementation.
+
 ## Priority 1: Build and explain one reliable agent path
 
 Study and implement together:
@@ -55,9 +67,9 @@ Implement a small but real trace model:
 
 OpenTelemetry integration can follow later. The immediate goal is to answer: what happened, where did it fail, and did a change improve it?
 
-## Priority 4: Learn one mainstream orchestration framework
+## Priority 4: Learn one current mainstream orchestration framework
 
-Use LangGraph after understanding the minimal loop.
+Choose the primary framework when this phase begins, based on current maintenance, job relevance, documentation, and fit for the target workflow. LangGraph is a current candidate, not a permanent commitment. Use it only after understanding the minimal loop.
 
 Focus on:
 
@@ -68,7 +80,7 @@ Focus on:
 - Human approval
 - Failure recovery
 
-Do not prioritize memorizing decorators or vendor-specific deployment APIs.
+Do not prioritize memorizing decorators or vendor-specific deployment APIs. The durable outputs are typed state, conditional transitions, checkpoints, interrupts, approvals, recovery, and traceability; remap these concepts if the selected framework changes.
 
 ## Priority 5: Selective production engineering
 
@@ -115,14 +127,16 @@ Full capability systems and container sandboxes can be deferred, but the boundar
 ## Learning order
 
 ```text
+0. Python-for-Agent components: contracts, errors, async, and tests
 1. Minimal loop + tool contract + deterministic tests
-2. Structured traces
-3. Context selection and compaction
-4. Memory layers and write/retrieval policy
-5. Context/memory evaluation dataset
-6. LangGraph state, checkpoints, and interrupts
-7. Small MCP implementation
-8. Architecture study of long-running harnesses
+2. Independent rebuild of the minimal runtime
+3. Structured traces
+4. Context selection and compaction
+5. Memory layers and write/retrieval policy
+6. Context/memory evaluation dataset
+7. LangGraph state, checkpoints, and interrupts
+8. Small MCP implementation
+9. Architecture study of long-running harnesses
 ```
 
 ## Portfolio evidence
@@ -138,4 +152,3 @@ A portfolio project should demonstrate:
 - Clear architecture documentation and tradeoff analysis
 
 It does not need to implement every concern of a distributed agent platform.
-
