@@ -1,4 +1,5 @@
 import asyncio
+from dataclasses import FrozenInstanceError
 
 import pytest
 
@@ -11,6 +12,7 @@ from mini_agent import (
     ToolSpec,
     TransientToolError,
     execute_tool,
+    validate_weather_arguments,
 )
 
 
@@ -112,7 +114,8 @@ def test_execute_tool_retries_timeout_with_a_bound():
 
 def test_agent_executes_tool_then_returns_final_answer():
     async def weather(arguments):
-        return f"sunny in {arguments['city']}"
+        city = validate_weather_arguments(arguments)
+        return f"sunny in {city}"
 
     registry = ToolRegistry()
     registry.register(ToolSpec(name="weather", handler=weather))
@@ -172,3 +175,74 @@ def test_agent_stops_at_max_steps():
     assert result.output is None
     assert len(result.steps) == 2
     assert model.calls == 2
+
+
+def test_model_reply_defaults_to_empty_tool_calls():
+    reply = ModelReply(final_answer="完成")
+
+    assert isinstance(reply, ModelReply)
+    assert reply.final_answer == "完成"
+    assert reply.tool_calls == []
+
+
+def test_tool_call_is_frozen():
+    call = ToolCall(
+        id="call-1",
+        name="weather",
+        arguments={"city": "南昌"},
+    )
+
+    assert call.id == "call-1"
+    assert call.name == "weather"
+    assert call.arguments == {"city": "南昌"}
+
+    with pytest.raises(FrozenInstanceError):
+        call.id = "123"
+
+
+def test_validate_weather_arguments():
+    city = validate_weather_arguments(arguments={"city": "南昌"})
+
+    assert city == "南昌"
+
+    with pytest.raises(PermanentToolError):
+        validate_weather_arguments({"location": "南昌"})
+    with pytest.raises(PermanentToolError):
+        validate_weather_arguments({"city": 123})
+
+
+def test_agent_records_invalid_weather_arguments():
+    async def weather(arguments):
+        city = validate_weather_arguments(arguments)
+        return f"sunny in {city}"
+
+    registry = ToolRegistry()
+    registry.register(
+        ToolSpec(
+            name="weather",
+            handler=weather,
+            max_retries=3,
+        )
+    )
+    model = ScriptedModel(
+        [
+            ModelReply(
+                tool_calls=[
+                    ToolCall(
+                        id="call-1",
+                        name="weather",
+                        arguments={"city": 123},
+                    )
+                ]
+            ),
+            ModelReply(final_answer="参数错误已记录"),
+        ]
+    )
+    result = asyncio.run(
+        MiniAgent(model, registry).run("查询天气")
+    )
+    assert result.status == "success"
+    assert result.output == "参数错误已记录"
+    assert len(result.steps) == 2
+    assert result.steps[0].observations == []
+    assert "permanent" in result.steps[0].errors[0]

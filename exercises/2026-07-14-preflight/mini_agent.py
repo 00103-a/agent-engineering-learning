@@ -7,11 +7,11 @@ from typing import Any, Literal, Protocol
 
 
 class TransientToolError(Exception):
-    """A temporary failure that may succeed on a later attempt."""
+    """暂时性失败：后续尝试可能成功。"""
 
 
 class PermanentToolError(Exception):
-    """A failure that retrying with the same arguments cannot fix."""
+    """永久性失败：使用相同参数重试无法解决。"""
 
 
 @dataclass(frozen=True)
@@ -71,25 +71,65 @@ class ToolRegistry:
         self._tools: dict[str, ToolSpec] = {}
 
     def register(self, spec: ToolSpec) -> None:
-        """Register a unique, non-empty tool name."""
-        # TODO: Reject empty names and duplicate registrations.
-        raise NotImplementedError
+        """注册一个名称非空且唯一的工具。"""
+        if spec.name == "":
+            raise ValueError("工具名不能为空")
+        if spec.name in self._tools:
+            raise ValueError("名称重复")
+        self._tools[spec.name] = spec
 
     def get(self, name: str) -> ToolSpec:
-        """Return a tool or raise KeyError for an unknown name."""
-        # TODO: Implement lookup.
-        raise NotImplementedError
+        """返回对应工具；名称不存在时抛出 KeyError。"""
+        return self._tools[name]
 
 
 async def execute_tool(spec: ToolSpec, arguments: dict[str, Any]) -> ToolExecution:
-    """Execute a tool with timeout and bounded retries.
+    """带超时和有限重试地执行工具。
 
-    Retry TransientToolError and asyncio.TimeoutError up to max_retries.
-    Do not retry PermanentToolError. Unexpected exceptions are classified as
-    unexpected and are not retried.
+    对 TransientToolError 和 asyncio.TimeoutError 最多重试 max_retries 次。
+    PermanentToolError 不重试。未预期异常归类为 unexpected，也不重试。
     """
-    # TODO: Implement attempts, timeout, retry, and error classification.
-    raise NotImplementedError
+    for attempts in range(1, spec.max_retries + 2):
+        try:
+            value = await asyncio.wait_for(
+                spec.handler(arguments),
+                timeout=spec.timeout_seconds,
+            )
+            return ToolExecution(
+                ok=True,
+                attempts=attempts,
+                value=value,
+            )
+        except PermanentToolError as error:
+            return ToolExecution(
+                ok=False,
+                attempts=attempts,
+                error_type="permanent",
+                error_message=str(error),
+            )
+        except TransientToolError as error:
+            if attempts == spec.max_retries + 1:
+                return ToolExecution(
+                    ok=False,
+                    attempts=attempts,
+                    error_type="transient",
+                    error_message=str(error),
+                )
+        except asyncio.TimeoutError as error:
+            if attempts == spec.max_retries + 1:
+                return ToolExecution(
+                    ok=False,
+                    attempts=attempts,
+                    error_type="timeout",
+                    error_message=str(error),
+                )
+        except Exception as error:
+            return ToolExecution(
+                ok=False,
+                attempts=attempts,
+                error_type="unexpected",
+                error_message=str(error),
+            )
 
 
 class MiniAgent:
@@ -106,10 +146,50 @@ class MiniAgent:
         self.max_steps = max_steps
 
     async def run(self, task: str) -> RunResult:
-        """Run until final_answer or max_steps is reached.
+        """运行到收到 final_answer 或达到 max_steps 为止。
 
-        Unknown tools and tool execution failures must be recorded in the
-        current Step so that the next model call can observe them.
+        未知工具和工具执行失败必须记录到当前 Step，
+        让下一次模型调用能够看到这些信息。
         """
-        # TODO: Implement the bounded agent loop.
-        raise NotImplementedError
+        steps: list[Step] = []
+        for index in range(1, self.max_steps + 1):
+            reply = await self.model.generate(task, steps)
+            step = Step(index=index, tool_calls=reply.tool_calls)
+            steps.append(step)
+            if reply.final_answer is not None:
+                return RunResult(
+                    status="success",
+                    output=reply.final_answer,
+                    steps=steps,
+                )
+            for tool_call in reply.tool_calls:
+                try:
+                    spec = self.registry.get(tool_call.name)
+                except KeyError:
+                    step.errors.append(f"unknown_tool: {tool_call.name}")
+                    continue
+
+                execution = await execute_tool(spec, tool_call.arguments)
+
+                if execution.ok:
+                    step.observations.append(str(execution.value))
+                else:
+                    step.errors.append(
+                        f"{execution.error_type}: {execution.error_message}"
+                    )
+        return RunResult(
+            status="max_steps",
+            output=None,
+            steps=steps,
+        )
+
+
+def validate_weather_arguments(
+    arguments: dict[str, Any],
+) -> str:
+    if "city" not in arguments:
+        raise PermanentToolError("必须有 city 参数")
+    city = arguments["city"]
+    if not isinstance(city, str):
+        raise PermanentToolError("city 参数必须是字符串")
+    return city
