@@ -16,6 +16,8 @@ Progress through three levels:
 
 Passing tests after line-by-line guidance is evidence of understanding, not yet evidence of independent implementation.
 
+AI-assisted implementation is expected, but ownership must remain explicit. Boilerplate, UI styling, configuration, and routine API glue may be AI-led. Agent loops, failure boundaries, context selection, and evaluation logic require the learner to predict behavior, modify at least one path, verify it with tests, and explain the trade-offs.
+
 ## Priority 1: Build and explain one reliable agent path
 
 Study and implement together:
@@ -101,6 +103,8 @@ Understand but defer until needed:
 - Kubernetes sandbox provisioners
 - Complex multi-agent scheduling
 - Large-scale event buses
+
+Full-stack learning begins as a light companion to the Agent track instead of a separate prerequisite. During the foundation stage, the learner only needs to understand and modify thin HTTP and UI integrations with AI assistance. Independent React, database, and deployment fluency is deferred until the Agent core reaches transferable proficiency.
 
 ## Priority 6: Protocol literacy
 
